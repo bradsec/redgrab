@@ -43,10 +43,11 @@ type RedditPost struct {
 }
 
 type progressWriter struct {
-	total    int64
-	written  int64
-	writer   io.Writer
-	filename string
+	total      int64
+	written    int64
+	writer     io.Writer
+	filename   string
+	downloaded int64
 }
 
 func (pw *progressWriter) Write(p []byte) (int, error) {
@@ -55,8 +56,31 @@ func (pw *progressWriter) Write(p []byte) (int, error) {
 		return n, err
 	}
 	pw.written += int64(n)
-	fmt.Printf("\rDownloading: %d%% %s", 100*pw.written/pw.total, pw.filename)
+	pw.downloaded += int64(n)
+	percentage := float64(pw.written) / float64(pw.total) * 100
+
+	fileType := "File"
+	if strings.Contains(pw.filename, "audio") {
+		fileType = "Audio"
+	} else if strings.Contains(pw.filename, "video") {
+		fileType = "Video"
+	}
+
+	fmt.Printf("\rDownloading %s: %.0f%% (%s/%s)", fileType, percentage, formatBytes(pw.downloaded), formatBytes(pw.total))
 	return n, nil
+}
+
+func formatBytes(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %ciB", float64(bytes)/float64(div), "KMGTPE"[exp])
 }
 
 func showBanner() {
@@ -276,7 +300,7 @@ func mergeFiles(audioOnly bool, videoOnly bool, videoFile string, audioFile stri
 			return err
 		}
 	} else {
-		fmt.Printf("Video (with audio) saved: %v\n", absMergedFile)
+		fmt.Printf("Merged video and audio: %v\n", absMergedFile)
 	}
 
 	// Delete the audio and video files
@@ -289,8 +313,6 @@ func mergeFiles(audioOnly bool, videoOnly bool, videoFile string, audioFile stri
 	if err != nil {
 		return err
 	}
-
-	fmt.Println("Standalone audio and video files removed.")
 
 	return nil
 }
