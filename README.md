@@ -8,7 +8,17 @@ Reddit Video Grabber (redgrab) is a command-line utility for downloading videos 
 
 ## Installation
 
-To install redgrab, you need to have Go installed on your system (https://go.dev/doc/install). Once you have Go installed, you can either clone and run from source or download and install with the following command:
+### Pre-built Binaries
+Included in `dist` directory. For Windows, Linux and macOS.
+
+- [Windows amd64](https://github.com/bradsec/redgrab/raw/main/dist/redgrab_windows64_v1_0.zip)
+- [Linux amd64](https://github.com/bradsec/redgrab/raw/main/dist/redgrab_linux_amd64_v1_0.tar.xz)
+- [macOS arm64](https://github.com/bradsec/redgrab/raw/main/dist/redgrab_macos_arm64_v1_0.tar.xz)
+- [macOS Intel](https://github.com/bradsec/redgrab/raw/main/dist/redgrab_macos_intel_v1_0.tar.xz)
+
+
+### Build from source (Go required)
+To install / build redgrab binary from source, you need to have Go installed on your system (https://go.dev/doc/install). Once you have Go installed, you can either clone and run from source or download and install with the following command:
 
 ```terminal
 go install github.com/bradsec/redgrab@latest
