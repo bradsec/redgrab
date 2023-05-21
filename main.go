@@ -2,8 +2,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/md5"
-	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -24,7 +22,8 @@ type RedditPost struct {
 	Data struct {
 		Children []struct {
 			Data struct {
-				Title               string `json:"title"` // Add this line
+				Title               string  `json:"title"`
+				Created             float64 `json:"created_utc"`
 				CrossPostParentList []struct {
 					Media struct {
 						RedditVideo struct {
@@ -98,19 +97,19 @@ func showUsage() {
 	usageText := `Usage:
 
 # Download both video and audio.
-redgrab REDDIT-VIDEO-URL
+redgrab REDDIT-POST-URL
 
 # Specify and output directory (default is current directory)
-redgrab -o thisdir REDDIT-VIDEO-URL
+redgrab -o thisdir REDDIT-POST-URL
 
 # Specify a custom User-Agent string (default is "reddit-video-downloader")
-redgrab -user-agent "custom-user-agent" REDDIT-VIDEO-URL
+redgrab -user-agent "custom-user-agent" REDDIT-POST-URL
 
 # Download video only (no audio)
-redgrab -video REDDIT-VIDEO-URL
+redgrab -video REDDIT-POST-URL
 
 # Download audio only (no video)
-redgrab -audio REDDIT-VIDEO-URL
+redgrab -audio REDDIT-POST-URL
 `
 	fmt.Println(usageText)
 }
@@ -320,7 +319,7 @@ func mergeFiles(audioOnly bool, videoOnly bool, videoFile string, audioFile stri
 // sanitizeString for filename
 // Remove non standard chars and make OS and terminal friendly
 // Prepend date of download and MD5 hash of video URL to filename.
-func sanitizeString(str string, videoURL string) string {
+func sanitizeString(str string, videoURL string, created float64) string {
 	reg, err := regexp.Compile("[^a-zA-Z0-9]+")
 	if err != nil {
 		log.Fatal(err)
@@ -337,19 +336,17 @@ func sanitizeString(str string, videoURL string) string {
 	sanitizedString = strings.ToLower(sanitizedString)
 
 	// Restrict length of filename
-	if len(sanitizedString) > 60 {
-		sanitizedString = sanitizedString[:60]
+	if len(sanitizedString) > 70 {
+		sanitizedString = sanitizedString[:70]
 	}
 
-	// Add current date format YYYYMMDD
-	dateString := time.Now().Format("20060102")
+	// Convert created_utc to int64
+	createdUTC := int64(created)
 
-	// Calculate MD5 hash of video URL
-	hash := md5.Sum([]byte(videoURL))
-	hashString := hex.EncodeToString(hash[:])
+	// Add created_utc to the file name
+	dateString := time.Unix(createdUTC, 0).Format("20060102_1504")
 
-	// sanitizedString = dateString + "_" + sanitizedString
-	sanitizedString = fmt.Sprintf("%v_%v_%s", dateString, hashString, sanitizedString)
+	sanitizedString = fmt.Sprintf("%v_%s", dateString, sanitizedString)
 
 	return sanitizedString
 }
@@ -382,7 +379,7 @@ func parseFlags() (audioOnly bool, videoOnly bool, userAgent string, outputDir s
 	args := flag.Args()
 	if len(args) == 0 {
 		showUsage()
-		err = fmt.Errorf("Target REDDIT-VIDEO-URL required.")
+		err = fmt.Errorf("Target REDDIT-POST-URL required.")
 		return
 	}
 
@@ -413,6 +410,30 @@ func fetchJSON(client *http.Client, userAgent string, postURL string) ([]RedditP
 	return posts, nil
 }
 
+func resolveRedirect(url string) (string, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	return resp.Request.URL.String(), nil
+}
+
+func fetchFullURL(url string) (string, error) {
+	// Check if the URL is a short Reddit URL
+	if strings.Contains(url, "v.redd.it") {
+		fullURL, err := resolveRedirect(url)
+		if err != nil {
+			return "", err
+		}
+		return fullURL, nil
+	}
+
+	// Return the original URL if it's already a full Reddit URL
+	return url, nil
+}
+
 func extractURLs(posts []RedditPost) (string, string, string, error) {
 	var videoURL, audioURL, postTitle string
 
@@ -429,7 +450,7 @@ func extractURLs(posts []RedditPost) (string, string, string, error) {
 			audioURL = strings.Split(videoURL, "_")[0] + "_audio.mp4"
 		}
 
-		postTitle = sanitizeString(posts[0].Data.Children[0].Data.Title, videoURL)
+		postTitle = sanitizeString(posts[0].Data.Children[0].Data.Title, videoURL, posts[0].Data.Children[0].Data.Created)
 	}
 
 	if videoURL == "" {
@@ -454,6 +475,10 @@ func run() error {
 	}
 
 	rawURL := postURL
+	postURL, err = fetchFullURL(postURL)
+	if err != nil {
+		return err
+	}
 
 	postURL, err = convertToBaseURL(postURL)
 	if err != nil {

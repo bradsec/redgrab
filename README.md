@@ -18,21 +18,21 @@ go install github.com/bradsec/redgrab@latest
 
 ```terminal
 # Download both video and audio.
-redgrab REDDIT-VIDEO-URL
+redgrab REDDIT-POST-URL
 
 # Specify and output directory (default is current directory)
-redgrab -o thisdir REDDIT-VIDEO-URL
+redgrab -o thisdir REDDIT-POST-URL
 
 # Specify a custom User-Agent string (default is: "reddit-video-downloader")
-redgrab -user-agent "custom-user-agent" REDDIT-VIDEO-URL
+redgrab -user-agent "custom-user-agent" REDDIT-POST-URL
 
 # Download video only (no audio)
-redgrab -video REDDIT-VIDEO-URL
+redgrab -video REDDIT-POST-URL
 
 # Download audio only (no video)
-redgrab -audio REDDIT-VIDEO-URL
+redgrab -audio REDDIT-POST-URL
 ```
 
 ## File Information
 
-File names are unique with date, MD5 hash of video URL and part of post title for easier identification. Example: `20230516_221fc565d080ee0bef702c3c4bf24a3c_this_post_name.mp4`. FFMPEG will write metadata into the comments including date of download and original URL in the video file (this is only for the complete video not the audio or video only options).
+File naming consists of the posts date/time YYYYMMDD_HHMM followed but part of title to keep length down. Example: `20230516_2222_this_post_title.mp4`. FFMPEG will write metadata into the comments including date of download and original URL in the video file (this is only for the complete video not the audio or video only options).
